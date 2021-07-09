@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="libs/okhttp-3.5.0.jar"/>
+	<classpathentry kind="lib" path="libs/okio-1.11.0.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/jfxrt.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/access-bridge-64.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/cldrdata.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/dnsns.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/jaccess.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/localedata.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/nashorn.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/sunec.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/sunjce_provider.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/sunmscapi.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/sunpkcs11.jar"/>
+	<classpathentry kind="lib" path="C:/Program Files/Java/jdk1.8.0_251/jre/lib/ext/zipfs.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

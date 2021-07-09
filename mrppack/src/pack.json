@@ -1,0 +1,13 @@
+{
+    "display": "CAPP",
+    "filename": "./demo/demo.mrp",
+    "appid": 1,
+    "path":"out.mrp",
+    "version": 1,
+    "vendor": "风的影子",
+    "description": "desc",
+    "files": [
+        "/lib/start.mr",
+        "/lib/cfunction.ext"
+    ]
+}
