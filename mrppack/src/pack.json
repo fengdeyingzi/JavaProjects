@@ -1,9 +1,9 @@
 {
     "display": "CAPP",
-    "filename": "./demo/demo.mrp",
-    "appid": 1,
+    "filename": "demo.mrp",
+    "appid": 40001,
     "path":"out.mrp",
-    "version": 1,
+    "version": 100,
     "vendor": "风的影子",
     "description": "desc",
     "files": [

@@ -3,7 +3,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import mrpbuilder_java.*;
+import mrpbuilder_java.MrpBuilder;
+
+
 
 public class Main_mrpbuilder {
 	
