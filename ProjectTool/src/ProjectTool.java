@@ -8,8 +8,8 @@ public class ProjectTool {
 	 */
 	public static void main(String[] args) {
 		System.out.println("test");
-					GradleReplace frame = new GradleReplace();
-					frame.setVisible(true);
+//					GradleReplace frame = new GradleReplace();
+//					frame.setVisible(true);
 			
 	}
 }

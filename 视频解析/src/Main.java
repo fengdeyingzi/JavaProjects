@@ -20,7 +20,7 @@ public class Main {
 		int frameNumber = 140;
 		Picture picture;
 		try {
-			picture = FrameGrab.getFrameFromFile(new File("J:\\Videos\\PR剪辑教程！6分钟学会剪辑！~1.mp4"), frameNumber);
+			picture = FrameGrab.getFrameFromFile(new File("D:\\Videos\\PR剪辑教程！6分钟学会剪辑！~1.mp4"), frameNumber);
 			byte[][] data = picture.getData();
 			for(int i=0;i<data.length;i++){
 				byte[] item = data[i];

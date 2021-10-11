@@ -21,8 +21,10 @@ public class LANCheck extends Thread
     if ((Desktop.isDesktopSupported()) && (desktop.isSupported(Desktop.Action.BROWSE)))
     {
       URI uri = new URI(url);
-
+      System.out.println("跳转："+url);
       desktop.browse(uri);
+    }else{
+    	System.err.println("跳转失败："+Desktop.isDesktopSupported() + desktop.isSupported(Desktop.Action.BROWSE));
     }
   }
   
@@ -33,8 +35,8 @@ public class LANCheck extends Thread
 	      LANCheck.Client client = new LANCheck.Client(headip + id, port);
 	      System.out.println("连接成功 --> "+headip + id + ":" + port);
 	      Socket mSocket = client.mSocket;
-	      System.out.println("获取out");
-	      mSocket.getOutputStream();
+//	      System.out.println("获取out");
+//	      mSocket.getOutputStream();
 	      System.out.println("连接成功:"+headip + id + ":" + port);
 	      browse2("http://" + headip + id + ":" + port);
 	    }
@@ -71,6 +73,7 @@ public class LANCheck extends Thread
       new LANCheck("192.168.43.", id, 2333).start();
       new LANCheck("192.168.0.", id, 2333).start();
       new LANCheck("172.0.0.", id, 7070).start();
+      new LANCheck("172.0.0.", id, 2333).start();
     }
   }
 

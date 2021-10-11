@@ -28,6 +28,7 @@ import com.xl.util.MarkDownToCode;
 import com.xl.util.ParamToCode;
 import com.xl.util.ParamTojson;
 import com.xl.util.ParameterToCode;
+import com.xl.util.StrCom;
 import com.xl.util.XmlToJson;
 
 public class JSONToCodeWindow extends JFrame{
@@ -44,6 +45,7 @@ public class JSONToCodeWindow extends JFrame{
 	JButton button_codestatistics;
 	JButton button_toflutter;
 	JButton button_tojava;
+	JButton button_toa; //转简体
 	JScrollPane scrollPane;
 	TextWindow textWindow;
 	public JSONToCodeWindow(){
@@ -98,6 +100,7 @@ public class JSONToCodeWindow extends JFrame{
 		button_toflutter = new JButton("转Flutter模型");
 		
 		button_tojava = new JButton("转java代码");
+		button_toa = new JButton("转简体");
 		
 		
 		 textField.setPreferredSize(new Dimension(640, 20));
@@ -120,6 +123,7 @@ public class JSONToCodeWindow extends JFrame{
 		box_h.add(button_codestatistics);
 //		box_h.add(button_toflutter);
 		box_h.add(button_tojava);
+		box_h.add(button_toa);
 		
 		box_h.setPreferredSize(new Dimension(640, 30));
 //		JScrollPane scrollPane = new JScrollPane(box_h);
@@ -138,6 +142,7 @@ public class JSONToCodeWindow extends JFrame{
 		button_mdToCode.setMaximumSize(new Dimension(screen_w,60));
 		button_codestatistics.setMaximumSize(new Dimension(screen_w,60));
 		button_tojava.setMaximumSize(new Dimension(screen_w,60));
+		button_toa.setMaximumSize(new Dimension(screen_w,60));
 		
 		
 		button.addActionListener(new ActionListener() {
@@ -253,6 +258,15 @@ public class JSONToCodeWindow extends JFrame{
 				textWindow.setVisible(true);
 				textWindow.setState(JFrame.NORMAL);
 				
+			}
+		});
+		button_toa.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				String textString=editArea.getText().toString();
+				StrCom strCom = new StrCom();
+				editArea.setText(strCom.toCompl(textString));
 			}
 		});
 		setSize(new Dimension(820, 480));
