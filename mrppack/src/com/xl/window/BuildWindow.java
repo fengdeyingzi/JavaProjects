@@ -50,7 +50,7 @@ public class BuildWindow extends JFrame {
 	private JFileChooser fileChooser = new JFileChooser();
 
 	public BuildWindow() {
-		setTitle("MrpBuilder_V1.0 - 风的影子制作 2021.7.9");
+		setTitle("MrpBuilder_V1.0 - 风的影子制作 2021.7.9 https://github.com/fengdeyingzi/JavaProjects");
 		setSize(640, 480);
 		list_file = new ArrayList<String>();
 		JPanel layout_main = new JPanel();

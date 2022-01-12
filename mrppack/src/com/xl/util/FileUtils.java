@@ -179,7 +179,6 @@ public class FileUtils {
 	public static void copyFolder(String oldPath, String newPath) {
 
 		try {
-
 			// Log.e("copyFolder", ""+oldPath+" "+newPath);
 			new File(newPath).mkdirs();// 如果文件夹不存在  则建立新文件夹 
 			File a = new File(oldPath);
