@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import com.xl.window.BuildWindow;
 
 import mrpbuilder_java.MrpBuilder;
+import mrpbuilder_java.MrpInfo;
 import mrpbuilder_java.MrpUnpack;
 import mrpbuilder_java.MrpBuilder.Config;
 /*
@@ -13,7 +14,7 @@ import mrpbuilder_java.MrpBuilder.Config;
  */
 public class MrpBuilderMain {
 	public static void main(String[] args) {
-		boolean useWindow = true;
+		boolean useWindow = false;
 		String type = "";
 		String t = "pack";
 		String displayname = "我的mrp";
@@ -80,7 +81,7 @@ public class MrpBuilderMain {
 						+"\n"
 						+"​    -desc 详情\n"
 						+"\n"
-						+"​    -t 类型 unpack解包 pack打包\n"
+						+"​    -t 类型 unpack 解包;pack 打包;info 获取mrp信息\n"
 						+"\n"
 						+"​    -i 输入文件（可指定文件夹）\n"
 						+"\n"
@@ -129,6 +130,23 @@ public class MrpBuilderMain {
 				}
 				MrpBuilder builder = new MrpBuilder();
 				builder.pack(config, list_file);
+			}
+			else if(t.equals("info")){ //获取mrp信息
+				if(inputList.size()==0){
+					System.out.println("请添加输入文件");
+					return;
+				}
+				MrpInfo mrpInfo = new MrpInfo(inputList.get(0));
+				MrpBuilder.Config config = mrpInfo.getInfo();
+				System.out.println("应用名："+config.DisplayName);
+				System.out.println("文件名："+config.FileName);
+				System.out.println("作者："+config.Vendor);
+				System.out.println("Appid："+config.Appid);
+				System.out.println("版本："+config.Version);
+				System.out.println("描述："+config.Desc);
+				
+			}else if(t.equals("setinfo")){ //设置mrp信息
+				
 			}
 		}
 		

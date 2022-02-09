@@ -37,7 +37,7 @@ public class FileUtils {
 				return path.substring(i + 1);
 			}
 		}
-		return "";
+		return path;
 	}
 
 	// 获取文件所在文件夹
