@@ -417,11 +417,11 @@ public class MrpBuilder {
 	}
 
 	public class FileItem {
-		String path;
-		String filename;
-		int namesize;
-		int offset;
-		int len;
+		public String path;
+		public String filename;
+		public int namesize;
+		public int offset;
+		public int len;
 	}
 
 	public class Config {
