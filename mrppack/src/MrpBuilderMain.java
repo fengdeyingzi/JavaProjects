@@ -35,12 +35,15 @@ public class MrpBuilderMain {
 		String desc = "mrpbuilder生成 https://github.com/fengdeyingzi/JavaProjects";
 		ArrayList<String> inputList = new ArrayList<String>();
 		ArrayList<String> includeList = new ArrayList<String>();
+		ArrayList<String> defineList = new ArrayList<String>();
 		String output = "."+File.separator;
 		String auth = "2f7cc7cde";
 		String appid = "90001";
 		String version = "1001";
 		String scrw = "240";
 		String scrh = "320";
+		boolean useGZIP = false;
+		boolean useBMP565 = false;
 		MrpBuilder.Config config = new MrpBuilder().new Config();
 		if(args.length == 0){
 			if(useWindow){
@@ -57,6 +60,12 @@ public class MrpBuilderMain {
 					type = item.substring(1);
 					if(item.startsWith("-I")){
 						includeList.add(item);
+					}else if(item.equals("-gzip")){
+						useGZIP = true;
+					}else if(item.equals("-bmp565")){
+						useBMP565 = true;
+					}else if(item.startsWith("-D")){
+						defineList.add(item);
 					}
 				}else{
 					if(type.equals("t") || type.equals("type")){
@@ -74,7 +83,18 @@ public class MrpBuilderMain {
 						desc = item;
 						config.Desc = item;
 					}else if(type.equals("input") || type.equals("i")){
-						inputList.add(item);
+//						inputList.add(item);
+						File file = new File(item);
+						if(file.isDirectory()){
+							File[] lists = file.listFiles();
+							for(File itemfile:lists){
+								if(itemfile.isFile()){
+									inputList.add(itemfile.getPath());
+								}
+							}
+						}else {
+							inputList.add(item);
+						}
 					}else if(type.equals("output")|| type.equals("o")){
 						output = item;
 					}else if(type.equals("auth")){
@@ -135,7 +155,7 @@ public class MrpBuilderMain {
 					System.out.println("请输入文件");
 				}
 				
-				ArrayList<File> list_file = new ArrayList<File>();
+				ArrayList<String> list_file = new ArrayList<String>();
 				config = new MrpBuilder().new Config();
 				config.FileName = filename;
 				config.DisplayName = displayname;
@@ -150,19 +170,20 @@ public class MrpBuilderMain {
 				config.list_file = new ArrayList<MrpBuilder.FileItem>();
 				for(int i=0;i<inputList.size();i++){
 					File item = new File(inputList.get(i));
-					if(item.isFile()){
-						list_file.add(item);
-					}else if(item.isDirectory()){
+					if(item.isDirectory()){
 						File[] lists = item.listFiles();
 						for(File itemfile:lists){
 							if(itemfile.isFile()){
-								list_file.add(itemfile);
+								list_file.add(itemfile.getPath());
 							}
 						}
+					}else{
+						list_file.add(inputList.get(i));
 					}
 					
 				}
 				MrpBuilder builder = new MrpBuilder();
+				builder.setGZIP(useGZIP);
 				builder.pack(config, list_file);
 			}
 			else if(t.equals("info")){ //获取mrp信息
@@ -180,7 +201,7 @@ public class MrpBuilderMain {
 				System.out.println("描述："+config.Desc);
 				System.out.println("文件列表：");
 				for(int i=0;i<config.list_file.size();i++){
-					System.out.println("    -> "+config.list_file.get(i).filename);
+					System.out.println(String.format("    -> %s      offset:%d,size:%d", config.list_file.get(i).filename, config.list_file.get(i).offset, config.list_file.get(i).len ));
 				}
 				
 			}else if(t.equals("setinfo")){ //设置mrp信息
@@ -196,7 +217,7 @@ public class MrpBuilderMain {
 					System.out.println("请添加输入文件");
 					return;
 				}
-				if(!testCompileMRP(inputList,includeList)){
+				if(!testCompileMRP2(inputList,includeList,defineList)){
 					return;
 				}
 				//判断start.mr是否存在
@@ -220,7 +241,7 @@ public class MrpBuilderMain {
 				if(!inputList.contains("start.mr")){
 					inputList.add("start.mr");
 				}
-				ArrayList<File> list_file = new ArrayList<File>();
+				ArrayList<String> list_file = new ArrayList<String>();
 				config = new MrpBuilder().new Config();
 				config.FileName = filename;
 				config.DisplayName = displayname;
@@ -235,30 +256,47 @@ public class MrpBuilderMain {
 				config.list_file = new ArrayList<MrpBuilder.FileItem>();
 				for(int i=0;i<inputList.size();i++){
 					File item = new File(inputList.get(i));
-					if(item.isFile()){
-						list_file.add(item);
-					}else if(item.isDirectory()){
+					if(item.isDirectory()){
 						File[] lists = item.listFiles();
 						for(File itemfile:lists){
 							if(itemfile.isFile()){
-								list_file.add(itemfile);
+								list_file.add(itemfile.getPath());
 							}
 						}
+					}else {
+						list_file.add(inputList.get(i));
 					}
 					
 				}
 				MrpBuilder builder = new MrpBuilder();
 				
 				System.out.println("--> 开始打包");
+				//打包之前移除掉c和h文件
+				for(int i=list_file.size()-1;i>=0;i--){
+					String item = list_file.get(i);
+					String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
+					if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
+						list_file.remove(i);
+					}
+				}
+				builder.setGZIP(useGZIP);
+				builder.setBMP565(useBMP565);
 				builder.pack(config, list_file);
 			}
 		}
 		
 	}
 	
-	public static String getTempName(String name){
+	public static String getTempName(String dir,String name){
 		String endName = FileUtils.getEndName(name);
-		return name.substring(0, name.length()-endName.length())+".o";
+		String tempName = dir + File.separator + name.substring(0, name.length()-endName.length())+".o";
+		String tempDir = FileUtils.getDir(tempName);
+		File tempFile = new File(tempDir);
+		if(!tempFile.isDirectory()){
+			tempFile.mkdirs();
+		}
+//		String tempPath = System.getProperty("java.io.tmpdir");
+		return tempName;
 	}
 	
 	public static boolean testCMD(String cmd){
@@ -324,10 +362,94 @@ public class MrpBuilderMain {
 		
 	}
 	
+	public static boolean testCompileMRP2(ArrayList<String> list_file, ArrayList<String> includeList, ArrayList<String> defineList){
+		SecurityManager m = new SecurityManager();
+		String tempPath = System.getProperty("java.io.tmpdir");
+		String dir = "2";
+		tempPath = tempPath + File.separator + dir;
+		File tempDir = new File(tempPath);
+		if(!tempDir.isDirectory()){
+			tempDir.mkdir();
+		}
+		String MRPBUILDER = "C:\\skysdk\\compiler";
+		try{
+		
+			String builderc = System.getenv("MRPBUILDER");
+			if(builderc!=null){
+				MRPBUILDER = builderc;
+			}else{
+				System.out.println("未找到 MRPBUILDER 环境变量，请在环境变量中设置");
+			}
+		}catch(Exception e){
+			
+		}
+		System.out.println("mrpbuilder路径："+MRPBUILDER);
+		
+		
+		
+		
+		StringBuffer buffer_link = new StringBuffer();
+				
+		buffer_link.append(		"armlink -ropi -rwpi -ro-base 0x80000 -remove -first mr_c_function_load -entry mr_c_function_load -o mr_cfunction.fmt ");
+		for(int i=0;i<list_file.size();i++){
+			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
+			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
+			buffer_link.append(getTempName(tempPath,list_file.get(i))+" ");
+			}
+			
+		}
+		
+		buffer_link.append(String.format("%s\\mr_helper.lib(mr_helper.o) %s\\mr_helper.lib %s\\mr_helperexb.lib ", MRPBUILDER,MRPBUILDER,MRPBUILDER));
+		System.out.println("--> 调用armcc编译");
+		
+		for(int i=0;i<list_file.size();i++){
+			StringBuffer buffer_armcc = new StringBuffer();
+			buffer_armcc.append(String.format("armcc -c -I. -c -O2 -Otime -DGET_C_FUNCTION_P()=(*(((mr_c_function_st**)mr_c_function_load)-1)) -DGET_HELPER()=(*(((mr_table**)mr_c_function_load)-2)) -I%s\\..\\include -I%s\\..\\include\\plugins -cpu ARM7EJ-S -littleend -apcs /ropi/rwpi/interwork -fa -zo ", MRPBUILDER,MRPBUILDER));
+			for(int j=0;j<includeList.size();j++){
+				buffer_armcc.append(includeList.get(j)+" ");
+			}
+			for(int j=0;j<defineList.size();j++){
+				buffer_armcc.append(defineList.get(j)+" ");
+			}
+			buffer_armcc.append("-o ");
+			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
+			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
+				buffer_armcc.append(getTempName(tempPath,list_file.get(i))+" ");
+				buffer_armcc.append(""+list_file.get(i)+" ");
+//				System.out.println(buffer_armcc.toString());
+				System.out.println("Compile ... "+list_file.get(i));
+				if(!testCMD(buffer_armcc.toString())){
+					return false;
+				}
+			}
+		}
+		
+		
+		
+		System.out.println("--> 调用armlink");
+		System.out.println(buffer_link.toString());
+		if(!testCMD(buffer_link.toString())){
+			return false;
+		}
+		System.out.println("--> 调用fromelf");
+		if(!testCMD("fromelf -bin -o .\\mr_cfunction.ext mr_cfunction.fmt")){
+			return false;
+		}
+		System.out.println("--> 生成ext");
+		mrpeg("mr_cfunction.ext","cfunction.ext");
+		return true;
+
+	}
+	
 	public static boolean testCompileMRP(ArrayList<String> list_file, ArrayList<String> includeList){
 		SecurityManager m = new SecurityManager();
-		
-		
+		String tempPath = System.getProperty("java.io.tmpdir");
+		String dir = "2";
+		tempPath = tempPath + File.separator + dir;
+		File tempDir = new File(tempPath);
+		if(!tempDir.isDirectory()){
+			tempDir.mkdir();
+		}
 		String MRPBUILDER = "C:\\skysdk\\compiler";
 		try{
 		
@@ -353,7 +475,7 @@ public class MrpBuilderMain {
 		for(int i=0;i<list_file.size();i++){
 			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
 			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
-				buffer_armcc.append(getTempName(list_file.get(i))+" ");
+				buffer_armcc.append(getTempName(tempPath,list_file.get(i))+" ");
 				buffer_armcc.append(""+list_file.get(i)+" ");
 			}
 		}
@@ -363,7 +485,7 @@ public class MrpBuilderMain {
 		for(int i=0;i<list_file.size();i++){
 			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
 			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
-			buffer_link.append(getTempName(list_file.get(i))+" ");
+			buffer_link.append(getTempName(tempPath,list_file.get(i))+" ");
 			}
 			
 		}

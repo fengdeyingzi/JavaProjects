@@ -348,9 +348,9 @@ public class BuildWindow extends JFrame {
 	}
 
 	public void build() {
-		ArrayList<File> list_file = new ArrayList<File>();
+		ArrayList<String> list_file = new ArrayList<String>();
 		for (String path : this.list_file) {
-			list_file.add(new File(path));
+			list_file.add((path));
 		}
 		MrpBuilder.Config config = new MrpBuilder().new Config();
 		config.FileName = edit_filename.getText();

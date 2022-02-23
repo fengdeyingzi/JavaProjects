@@ -29,7 +29,7 @@ public class Main_mrpbuilder {
 	}
 	
 	public static void test(){
-		ArrayList<File> list_file = new ArrayList<File>();
+		ArrayList<String> list_file = new ArrayList<String>();
 		MrpBuilder.Config config = new MrpBuilder().new Config();
 		config.FileName = "测试";
 		config.DisplayName = "test";
@@ -38,7 +38,7 @@ public class Main_mrpbuilder {
 		config.path = "D:\\Go\\output.mrp";
 		config.AuthStr = "";
 		config.list_file = new ArrayList<MrpBuilder.FileItem>();
-		list_file.add(new File("D:\\Go\\android.mk"));
+		list_file.add("D:\\Go\\android.mk");
 		
 		MrpBuilder builder = new MrpBuilder();
 		builder.pack(config, list_file);

@@ -106,7 +106,11 @@ public class MrpInfo {
 				offset+=4;
 				FileOutputStream outputStream;
 				byte[] temp_data = new byte[fileLen];
-				System.arraycopy(data, fileOffset, temp_data, 0, fileLen);
+				if(fileLen+fileOffset>data.length){
+					System.out.println("文件偏移异常："+filename+" offset:"+fileOffset+",len:"+fileLen);
+				}else{
+					System.arraycopy(data, fileOffset, temp_data, 0, fileLen);
+				}
 				FileItem fileItem = new MrpBuilder().new FileItem();
 				fileItem.filename = filename;
 				fileItem.offset = fileOffset;

@@ -1,5 +1,6 @@
 package mrpbuilder_java;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -10,9 +11,13 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.GZIPOutputStream;
+
+import javax.swing.text.Position.Bias;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.omg.CORBA.PRIVATE_MEMBER;
 
 import com.xl.util.FileUtils;
 
@@ -41,21 +46,47 @@ public class MrpBuilder {
 	int ScreenHeight; // [206:208]
 	byte Plat; // [208:209] mtk/mstar填1，spr填2，其它填0
 	byte[] Reserve3 = new byte[31]; // [209:240]
+	boolean useGZIP = false;// 是否gz压缩
+	boolean useBMP565 = false; //压缩图片为bmp565
 
 	ArrayList<FileItem> list_file;
 	/*
 	 * display path filename appid version vendor description
 	 */
 
+	public void setGZIP(boolean use) {
+		this.useGZIP = use;
+	}
+	
+	public void setBMP565(boolean use){
+		this.useBMP565 = use;
+	}
+
 	// 打包
-	public void pack(Config config, ArrayList<File> list_file) {
+	public void pack(Config config, ArrayList<String> list_file) {
 		for (int i = 0; i < list_file.size(); i++) {
 			FileItem fileItem = new MrpBuilder().new FileItem();
-			String temp = list_file.get(i).getPath();
+			String temp = list_file.get(i);
 
-			fileItem.path = list_file.get(i).getPath();
+			fileItem.path = list_file.get(i);
 			fileItem.filename = FileUtils.getName(temp);
-
+			// 辨别带name的文件
+			if(fileItem.path.indexOf('(')>0 && fileItem.path.indexOf(')')>0){
+				String tempStr = fileItem.path;
+				fileItem.path = tempStr.substring(0,tempStr.indexOf('(')).trim();
+				//获取括号里的内容
+				String kString = tempStr.substring(tempStr.indexOf('(')+1, tempStr.indexOf(')'));
+				String[] items = kString.split(",");
+				for(String item:items){
+					String[] item_arg = item.split("=");
+					
+					if(item_arg.length==2){
+						if(item_arg[0].trim().equals("name")){
+							fileItem.filename = item_arg[1].trim();
+						}
+					}
+				}
+			}
 			config.list_file.add(fileItem);
 
 		}
@@ -68,7 +99,34 @@ public class MrpBuilder {
 				if (!new File(item.path).exists()) {
 					System.out.println("文件未找到：" + item.path);
 				} else {
-					item.len = (int) new File(item.path).length();
+					
+						item.len = (int) new File(item.path).length();
+						
+						byte[] temp_buf = new byte[item.len];
+						try {
+							FileInputStream input = new FileInputStream(new File(item.path));
+							input.read(temp_buf);
+							input.close();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						
+					    item.buf = temp_buf;
+					if(useBMP565 && item.path.toLowerCase().endsWith(".bmp")){
+						byte[] bmp565buf = getBmp565(item.buf);
+						if(bmp565buf!=null){
+							item.buf = bmp565buf;
+							item.len = item.buf.length;
+						}else{
+							System.out.println("bmp565 error: "+item.path);
+						}
+						
+					}
+					if(useGZIP){
+						item.buf = gzipBytes(item.buf);
+						item.len = item.buf.length;
+					}
+					
 					// 每个列表项中由文件名长度、文件名、文件偏移、文件长度、0 组成，数值都是uint32因此需要4*4
 					listLen += item.namesize + 1 + 4 * 4;
 					dataLen += item.namesize + 1 + 4 * 2 + item.len;
@@ -159,14 +217,12 @@ public class MrpBuilder {
 				output.write(getIntByte(item.len));
 				System.out.println("写入数据：位置：" + output.length() + " offset:" + item.offset + " len=" + item.len);
 				output.seek(item.offset);
-				FileInputStream input = new FileInputStream(new File(item.path));
-				byte[] temp_buf = new byte[item.len];
-				input.read(temp_buf);
-				input.close();
-				output.write(temp_buf);
+				
+				output.write(item.buf);
+				
+				
 
 			} catch (UnsupportedEncodingException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -179,6 +235,133 @@ public class MrpBuilder {
 			e.printStackTrace();
 		}
 		System.out.println("写入完成");
+	}
+	
+	private boolean isGz(byte[] data){
+		if(data.length<3)return false;
+//		System.out.println(String.format("%x %x %x ", data[0], data[1], data[2]));
+		return ((data[0]&0xff) == 0x1f && (data[1]&0xff) == 0x8b && (data[2]&0xff) == 0x08);
+	}
+
+	// 压缩gz
+	public byte[] gzipBytes(byte[] buf) {
+		if(isGz(buf)){
+			return buf;
+		}
+		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		try {
+			GZIPOutputStream out = null;
+			out = new GZIPOutputStream(outputStream);
+			out.write(buf, 0, buf.length);
+			out.finish();
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return outputStream.toByteArray();
+	}
+	
+	//读取一个低位int类型数字
+	private int get_int(byte[] buf,int ptr){
+	 int num = (buf[ptr]&0xff) | (buf[ptr+1]<<8) | (buf[ptr+2]<<16) | (buf[ptr+3]<<24);
+	 return num;
+	}
+
+	private static int get_short(byte[] buf,int ptr){
+	 int num = (buf[ptr]&0xff) | ((buf[ptr+1]&0xff)<<8);
+	 return num;
+	}
+	
+	//将bmp图片转换成bmp565
+	public byte[] getBmp565(byte[] bmpbuf){
+		byte[] bitmap = null;
+		 byte[] bufc = bmpbuf;
+		 int ptr=0;
+		 int w=0,h=0;
+		 int bit=16; //bmp位数
+		 int bmpstart=0; //bmp数据位置
+		 int iy=0;
+		 int i=0;
+		 
+		 int tcolor = 0;
+		 int wsize;
+		 int iw;
+		 
+		 
+
+		 //检测文件头
+		 if(bufc[0]=='B' && bufc[1]=='M'){
+//		  debug_log("BM\n");
+		  ptr = 10;
+		  bmpstart = get_int(bufc,ptr);
+//		  debug_printf("bmpstart\n");
+		  ptr = 18;
+		  w = get_int(bufc,ptr);
+		  ptr = 22;
+		  h = get_int(bufc,ptr);
+		  ptr = 28;
+		  bit = get_short(bufc,ptr);
+		  if(bit == 16){
+//		   debug_printf("16位图\n");
+			bitmap = new byte[w*h*2];
+		   ptr = bmpstart;
+//		   bmp->width = w;
+//		   bmp->height = h;
+//		   bmp->bitmap = (uint16*)mrc_malloc(w*h*2);
+		   //复制位图数据
+		   
+		   for( iy=0;iy<h;iy++){
+			System.arraycopy(bmpbuf, ptr+(h-1-iy)*w*2, bitmap, iy*w, w*2);
+//		    mrc_memcpy(bmp->bitmap+iy*w, bufc+ptr+(bmp->height-1-iy)*bmp->width*2, w*2);
+//		    mrc_printf("复制位图数据%d %d\n",iy, bmp->height-1-iy);
+		   }
+		   
+		  }
+		  else if(bit == 24){
+			  bitmap = new byte[w*h*2];
+//		   debug_printf("当前位图是24位");
+		   ptr = bmpstart;
+//		   bmp->width = w;
+//		   bmp->height = h;
+		   //对齐字节
+		   wsize = w*3;
+		   if(wsize%4!=0) wsize = wsize - wsize%4 + 4;
+//		   debug_printf("申请内存\n");
+//		   bmp->bitmap = (uint16*)mrc_malloc(w*h*3);
+		   //32转16位
+		   byte[] buf16 = new byte[w*h*2];
+		    byte[] buf24 = new byte[bmpbuf.length-ptr]; // (bmpbuf+ptr);
+		    System.arraycopy(bmpbuf, ptr, buf24, 0, buf24.length);
+		   for(i=0;i<h;i++){
+			   for(iw=0;iw<w;iw++){
+				   
+		    //BGRA
+		     tcolor = (((buf24[i*wsize+iw*3]>>3)&0x1f) 
+		    | ((buf24[i*wsize+iw*3+1]<<3)&0x7e0) 
+		    | ((buf24[i*wsize+iw*3+2]<<8)&0xf800));
+		     buf16[(i*w+iw)*2] = (byte)(tcolor&0xff);
+		     buf16[(i*w+iw)*2+1] = (byte)((tcolor&0xff00) >> 8);
+			   }
+		   }
+		   //复制位图数据
+		    for(iy=0;iy<h;iy++){
+				
+		     //debug_printf("复制数据 %d %d\n",iy,bmp->height-1-iy);
+			 System.arraycopy(buf16, (h-1-iy)*w*2, bitmap, iy*w*2, w*2);
+//		     mrc_memcpy(bmp->bitmap + iy*bmp->width, buf16+(bmp->height-1-iy)*bmp->width,w*2);
+		   }
+//		   mrc_free(buf16);
+		    return bitmap;
+		  }
+		 }
+		 else
+		 {
+//			 debug_printf("不是bmp图片");
+		  return bitmap;
+		 }
+//		 debug_printf("返回bmp\n");
+		 return bitmap;
+		
 	}
 
 	public void main(String[] args) throws IOException {
@@ -421,6 +604,7 @@ public class MrpBuilder {
 		public String filename;
 		public int namesize;
 		public int offset;
+		public byte[] buf;
 		public int len;
 	}
 
