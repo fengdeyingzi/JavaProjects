@@ -4,20 +4,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.zip.GZIPOutputStream;
-
-import javax.swing.text.Position.Bias;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.omg.CORBA.PRIVATE_MEMBER;
+
 
 import com.xl.util.FileUtils;
 
@@ -134,7 +129,6 @@ public class MrpBuilder {
 				}
 
 			} catch (UnsupportedEncodingException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -177,10 +171,8 @@ public class MrpBuilder {
 			output.write(getGBKBytes("", 31));
 
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO: handle exception
 		}
 
 		// 写入文件列表
@@ -201,10 +193,8 @@ public class MrpBuilder {
 				System.out.println("filename:" + item.filename + "    pos=" + filePos + " len=" + item.len);
 
 			} catch (UnsupportedEncodingException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -215,9 +205,13 @@ public class MrpBuilder {
 				output.write(item.filename.getBytes("GBK"));
 				output.writeByte(0);
 				output.write(getIntByte(item.len));
-				System.out.println("写入数据：位置：" + output.length() + " offset:" + item.offset + " len=" + item.len);
+				System.out.println("写入数据："+item.filename+" offset：" + output.length() + " offset:" + item.offset + " len=" + item.len);
 				output.seek(item.offset);
-				
+				if(item.buf == null){
+					System.out.println(""+item.filename+"写入失败，数据为空");
+					output.close();
+					System.exit(-1);
+				}else
 				output.write(item.buf);
 				
 				
@@ -225,7 +219,6 @@ public class MrpBuilder {
 			} catch (UnsupportedEncodingException e) {
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -380,7 +373,6 @@ public class MrpBuilder {
 		try {
 			jsonText = readText(file, "UTF-8");
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		JSONObject jsonObject = new JSONObject(jsonText);
@@ -435,7 +427,6 @@ public class MrpBuilder {
 				}
 
 			} catch (UnsupportedEncodingException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -473,10 +464,8 @@ public class MrpBuilder {
 			output.write(getGBKBytes("", 31));
 
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO: handle exception
 		}
 
 		// 写入文件列表
@@ -497,10 +486,8 @@ public class MrpBuilder {
 				System.out.println("filename:" + item.filename + "    pos=" + filePos + " len=" + item.len);
 
 			} catch (UnsupportedEncodingException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -520,10 +507,8 @@ public class MrpBuilder {
 				output.write(temp_buf);
 
 			} catch (UnsupportedEncodingException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -566,6 +551,7 @@ public class MrpBuilder {
 
 			byte[] buf = new byte[input.available()];
 			input.read(buf);
+			input.close();
 			content = new String(buf, encoding);
 		}
 		return content;
@@ -579,14 +565,13 @@ public class MrpBuilder {
 				rebyte[i] = temp[i];
 			}
 		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return rebyte;
 	}
 
 	public static byte[] read(File file) throws IOException {
-		String content = "";
+		// String content = "";
 		// File file = new File(path);
 
 		if (file.isFile()) {
@@ -594,6 +579,7 @@ public class MrpBuilder {
 
 			byte[] buf = new byte[input.available()];
 			input.read(buf);
+			input.close();
 			return buf;
 		}
 		return null;

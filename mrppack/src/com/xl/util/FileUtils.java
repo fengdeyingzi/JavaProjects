@@ -56,7 +56,7 @@ public class FileUtils {
 	 * 列出目录下所有文件
 	 */
 	public static Collection<File> listFiles(File file, String[] miniType, boolean ischeck) {
-		ArrayList<File> filelist = new ArrayList();
+		ArrayList<File> filelist = new ArrayList<File>();
 		File[] files = file.listFiles();
 		if (files == null) {
 			return filelist;
@@ -78,7 +78,7 @@ public class FileUtils {
 	}
 
 	public static Collection<File> listFiles(File file, boolean ischeck) {
-		ArrayList<File> filelist = new ArrayList();
+		ArrayList<File> filelist = new ArrayList<File>();
 		File[] files = file.listFiles();
 		for (int i = 0; i < files.length; i++) {
 			if (files[i].isFile()) {
@@ -133,6 +133,7 @@ public class FileUtils {
 
 			byte[] buf = new byte[input.available()];
 			input.read(buf);
+			input.close();
 			content = new String(buf, encoding);
 		}
 		return content;
@@ -217,7 +218,6 @@ public class FileUtils {
 	}
 
 	public static void copyFile(File file, String newPath) {
-		// TODO Auto-generated method stub
 		copyFile(file.getPath(), newPath);
 	}
 	

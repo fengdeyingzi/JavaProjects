@@ -195,7 +195,7 @@ public class MrpUnpack {
     }
 	
 	public static void unGzipData(byte[] data, String outFile) {
-        String ouputfile = "";
+        // String ouputfile = "";
         try {
             //建立gzip压缩文件输入流
             InputStream fin = new ByteArrayInputStream(data);

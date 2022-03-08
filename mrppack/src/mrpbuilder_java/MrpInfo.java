@@ -3,7 +3,6 @@ package mrpbuilder_java;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
@@ -23,7 +22,7 @@ public class MrpInfo {
 		MrpBuilder.Config config = new MrpBuilder().new Config();
 		config.list_file = new ArrayList<MrpBuilder.FileItem>();
 		byte[] tempbyte = new byte[4];
-		byte[] tempdata = new byte[64];
+		// byte[] tempdata = new byte[64];
 		FileInputStream input;
 		try {
 			input = new FileInputStream(new File(filepath));
@@ -62,10 +61,8 @@ public class MrpInfo {
 			config.ScreenHeight = (tempscr >> 16) & 0xffff;
 			input.close();
 		} catch (FileNotFoundException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -104,7 +101,7 @@ public class MrpInfo {
 				int fileLen = readInt(data, offset);
 				offset+=4;
 				offset+=4;
-				FileOutputStream outputStream;
+				// FileOutputStream outputStream;
 				byte[] temp_data = new byte[fileLen];
 				if(fileLen+fileOffset>data.length){
 					System.out.println("文件偏移异常："+filename+" offset:"+fileOffset+",len:"+fileLen);
@@ -164,7 +161,6 @@ if(config.Vendor!=null)
 			output.write(MrpBuilder.getBigIntByte(config.Version)); // 版本id 大端
 			output.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		// output.write(getIntByte(0)); //

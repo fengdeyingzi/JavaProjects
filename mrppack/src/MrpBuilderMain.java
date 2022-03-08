@@ -1,3 +1,4 @@
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -7,9 +8,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.concurrent.ForkJoinPool;
 
 import com.xl.util.FileUtils;
 import com.xl.window.BuildWindow;
@@ -17,7 +18,7 @@ import com.xl.window.BuildWindow;
 import mrpbuilder_java.MrpBuilder;
 import mrpbuilder_java.MrpInfo;
 import mrpbuilder_java.MrpUnpack;
-import mrpbuilder_java.MrpBuilder.Config;
+
 /*
  * 控制台参数说明
  * -h 帮助
@@ -28,6 +29,32 @@ public class MrpBuilderMain {
 	public static void main(String[] args) {
         
 		boolean useWindow = false;
+		String helpText = "​    -h 帮助\r\n"
+				+"\n"
+				+"​    -filename 文件名\r\n"
+				+"\n"
+				+"​    -displayname 显示名\r\n"
+				+"\n"
+				+"​    -vendor 作者\r\n"
+				+"\n"
+				+"​    -desc 详情\r\n"
+				+"\n"
+				+"​    -t 类型 unpack 解包;pack 打包;info 获取mrp信息;setinfo 设置mrp信息;build mrp编译;gcc 使用gcc编译本机程序\r\n"
+				+"\n"
+				+"​    -i 输入文件（可指定文件夹）\r\n"
+				+"\n"
+				+"​    -o 输出文件\r\n"
+				+"\n"
+				+"​    -auth 编译器授权字符串 2f7cc7cde\r\n"
+				+"\n"
+				+"​    -appid 应用id\r\n"
+				+"\n"
+				+"​    -version 版本号\r\n"
+				+"\n"
+				+"​    -scrw 屏幕宽度\r\n"
+				+"\n"
+				+"​    -scrh 屏幕高度\r\n\r\n";
+		String builderVersion = "20220308";
 		String type = "";
 		String t = "pack";
 		String displayname = "我的mrp";
@@ -37,12 +64,14 @@ public class MrpBuilderMain {
 		ArrayList<String> inputList = new ArrayList<String>();
 		ArrayList<String> includeList = new ArrayList<String>();
 		ArrayList<String> defineList = new ArrayList<String>();
+		ArrayList<String> linkList = new ArrayList<String>();
 		String output = "."+File.separator;
 		String auth = "2f7cc7cde";
 		String appid = "90001";
 		String version = "1001";
 		String scrw = "240";
 		String scrh = "320";
+		String mainClass = "Main";
 		boolean useGZIP = false;
 		boolean useBMP565 = false;
 		startTime = System.currentTimeMillis();
@@ -52,7 +81,9 @@ public class MrpBuilderMain {
 				BuildWindow window = new BuildWindow();
 				window.setVisible(true);
 			}else{
-				System.out.println("请输入命令");
+				System.err.println("mrpbuilder - "+builderVersion);
+				System.out.println(helpText);
+				System.out.println("请输入命令, -h 可查看帮助");
 			}
 					
 		}else{
@@ -68,6 +99,8 @@ public class MrpBuilderMain {
 						useBMP565 = true;
 					}else if(item.startsWith("-D")){
 						defineList.add(item);
+					}else if(item.startsWith("-l") || item.startsWith("-L") || item.startsWith("-m") || item.startsWith("-O") || item.startsWith("-Wall")){
+						linkList.add(item);
 					}
 				}else{
 					if(type.equals("t") || type.equals("type")){
@@ -75,6 +108,8 @@ public class MrpBuilderMain {
 					}else if(type.equals("filename")){
 						filename = item;
 						config.FileName = item;
+					}else if(type.equals("mainclass")){
+						mainClass = item;
 					}else if(type.equals("displayname")){
 						displayname = item;
 						config.DisplayName = item;
@@ -116,33 +151,11 @@ public class MrpBuilderMain {
 				
 			}
 			if(type.equals("h")){
-				System.out.println("​    -h 帮助\n"
-						+"\n"
-						+"​    -filename 文件名\n"
-						+"\n"
-						+"​    -displayname 显示名\n"
-						+"\n"
-						+"​    -vendor 作者\n"
-						+"\n"
-						+"​    -desc 详情\n"
-						+"\n"
-						+"​    -t 类型 unpack 解包;pack 打包;info 获取mrp信息;setinfo 设置mrp信息;build 编译\n"
-						+"\n"
-						+"​    -i 输入文件（可指定文件夹）\n"
-						+"\n"
-						+"​    -o 输出文件\n"
-						+"\n"
-						+"​    -auth 编译器授权字符串 2f7cc7cde\n"
-						+"\n"
-						+"​    -appid 应用id\n"
-						+"\n"
-						+"​    -version 版本号\n"
-						+"\n"
-						+"​    -scrw 屏幕宽度\n"
-						+"\n"
-						+"​    -scrh 屏幕高度");
+				System.out.println(helpText);
 				System.out.println("风的影子 制作");
 				System.out.println("当前运行在 "+System.getProperty("java.vm.specification.name"));
+			}else if(type.equals("v")){
+				System.err.println("mrpbuilder - "+builderVersion);
 			}
 			else if(t.equals("unpack")){ //解包
 				if(inputList.size()>0){
@@ -187,6 +200,42 @@ public class MrpBuilderMain {
 				MrpBuilder builder = new MrpBuilder();
 				builder.setGZIP(useGZIP);
 				builder.pack(config, list_file);
+			}else if(t.equals("packjar") || t.equals("buildjar")){
+				ArrayList<File> listClass = new ArrayList<File>();
+				File metadir = new File("bin"+File.separator+"META-INF");
+				if(!metadir.exists()){
+					metadir.mkdirs();
+				}
+				File manifile = new File(metadir,"MANIFEST.MF");
+				FileOutputStream outputStream;
+				try {
+					outputStream = new FileOutputStream(manifile);
+					outputStream.write(String.format("Manifest-Version: 1.0\n"
+							+"Class-Path: .\n"
+							+"Main-Class: %s\n"
+							, mainClass).getBytes("UTF-8"));
+											outputStream.close();
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				
+				File binfile = new File("bin");
+				File[] listfile = binfile.listFiles();
+				for(File f:listfile){
+					listClass.add(f);
+				}
+				System.out.println("jar -cvfm "+output+" bin/META-INF/MANIFEST.MF -C ./bin .");
+				if(testCMD("jar -cvfm "+output+" bin/META-INF/MANIFEST.MF -C ./bin .")){
+					System.out.println("打包完成");
+				}
+				
+				
+			}else if(t.equals("runjava")){
+				runJava(inputList,new ArrayList<String>(), mainClass);
 			}
 			else if(t.equals("info")){ //获取mrp信息
 				if(inputList.size()==0){
@@ -276,7 +325,7 @@ public class MrpBuilderMain {
 				System.out.println("--> 开始打包");
 				//打包之前移除掉c和h文件
 				for(int i=list_file.size()-1;i>=0;i--){
-					String item = list_file.get(i);
+					// String item = list_file.get(i);
 					String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
 					if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
 						list_file.remove(i);
@@ -286,6 +335,18 @@ public class MrpBuilderMain {
 				builder.setBMP565(useBMP565);
 				builder.pack(config, list_file);
 				System.out.println("耗时："+(((float)(System.currentTimeMillis()-startTime))/1000)+" s");
+			}else if(t.equals("gcc")){
+				if(inputList.size()==0){
+					System.out.println("请添加输入文件");
+					return;
+				}
+				defineList.addAll(linkList);
+				if(!testCompile2(inputList,includeList,defineList,output)){
+					return;
+				}
+				
+				System.out.println("耗时："+(((float)(System.currentTimeMillis()-startTime))/1000)+" s");
+
 			}
 		}
 		
@@ -366,6 +427,8 @@ public class MrpBuilderMain {
 		
 	}
 	
+	
+	
 	public static String getTempPath(){
 		String tempPath = System.getProperty("java.io.tmpdir");
 		String dir = "2";
@@ -373,11 +436,128 @@ public class MrpBuilderMain {
 		return tempPath;
 	}
 	
-	public static boolean testCompileMRP2(ArrayList<String> list_file, ArrayList<String> includeList, ArrayList<String> defineList){
-		SecurityManager m = new SecurityManager();
+	public static void runJava(ArrayList<String> list_file,ArrayList<String> list_jar,String mainClass){
+		StringBuffer buffer_run = new StringBuffer();
+		String runDir = "bin";
+		buffer_run.append("javac -encoding UTF-8 -d "+runDir+" -classpath ");
+		for(String item:list_jar){
+			buffer_run.append(item+";");
+		}
+		if(list_jar.size()==0){
+			buffer_run.append(";");
+		}
+		
+		buffer_run.append(" ");
+		for(String item:list_file){
+			buffer_run.append(item+" ");
+		}
+		if(!testCMD(buffer_run.toString())){
+			System.out.println("javac执行失败");
+			return;
+		}
+		
+		StringBuffer buffer = new StringBuffer();
+		buffer.append("cmd.exe /c cd "+runDir+" & java -cp ");
+		for(String item:list_jar){
+			buffer.append(item+";");
+		}
+		if(list_jar.size()==0){
+			buffer.append(";");
+		}
+		
+		buffer.append(" ");
+		buffer.append(mainClass);	
+		System.out.println(buffer.toString());
+		testCMD(buffer.toString());
+	}
+	
+	public static boolean testCompile2(ArrayList<String> list_file, ArrayList<String> includeList, ArrayList<String> defineList,String ouputString){
+		// SecurityManager m = new SecurityManager();
 		String tempPath = System.getProperty("java.io.tmpdir");
 		String dir = "2";
 		tempPath = tempPath + File.separator + dir;
+		File tempDir = new File(tempPath);
+		if(!tempDir.isDirectory()){
+			tempDir.mkdir();
+		}
+		String MRPBUILDER = "D:\\app\\mingw64\\bin\\";
+		try{
+		
+			String builderc = System.getenv("GCCBUILDER");
+			if(builderc!=null){
+				MRPBUILDER = builderc;
+			}else{
+				System.out.println("未找到 GCCBUILDER 环境变量，请在环境变量中设置");
+			}
+		}catch(Exception e){
+			
+		}
+		System.out.println("mrpbuilder路径："+MRPBUILDER);
+		
+		
+		
+		
+		StringBuffer buffer_link = new StringBuffer();
+				
+		buffer_link.append(		"gcc -o "+ouputString+" ");
+		for(int i=0;i<list_file.size();i++){
+			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
+			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
+			buffer_link.append(getTempName(tempPath,list_file.get(i))+" ");
+			}else{
+				buffer_link.append(list_file.get(i)+" ");
+			}
+			
+		}
+		for(int j=0;j<includeList.size();j++){
+			buffer_link.append(includeList.get(j)+" ");
+		}
+		for(int j=0;j<defineList.size();j++){
+			buffer_link.append(defineList.get(j)+" ");
+		}
+		
+//		buffer_link.append(String.format("%s\\mr_helper.lib(mr_helper.o) %s\\mr_helper.lib %s\\mr_helperexb.lib ", MRPBUILDER,MRPBUILDER,MRPBUILDER));
+		System.out.println("--> 调用gcc编译");
+		
+		for(int i=0;i<list_file.size();i++){
+			StringBuffer buffer_armcc = new StringBuffer();
+			buffer_armcc.append("gcc -c -I. -O2 ");
+			for(int j=0;j<includeList.size();j++){
+				buffer_armcc.append(includeList.get(j)+" ");
+			}
+			for(int j=0;j<defineList.size();j++){
+				buffer_armcc.append(defineList.get(j)+" ");
+			}
+			buffer_armcc.append("-o ");
+			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
+			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
+				buffer_armcc.append(getTempName(tempPath,list_file.get(i))+" ");
+				buffer_armcc.append(""+list_file.get(i)+" ");
+//				System.out.println(buffer_armcc.toString());
+				System.out.println("Compile ... "+list_file.get(i));
+				if(!testCMD(buffer_armcc.toString())){
+					return false;
+				}
+			}
+		}
+		
+		
+		
+		System.out.println("--> 调用link");
+		System.out.println(buffer_link.toString());
+		if(!testCMD(buffer_link.toString())){
+			return false;
+		}
+		
+		return true;
+
+	}
+	
+	public static boolean testCompileMRP2(ArrayList<String> list_file, ArrayList<String> includeList, ArrayList<String> defineList){
+		// SecurityManager m = new SecurityManager();
+		String tempPath = System.getProperty("java.io.tmpdir");
+		String dir = "2";
+		tempPath = new File(tempPath, dir).getAbsolutePath();
 		File tempDir = new File(tempPath);
 		if(!tempDir.isDirectory()){
 			tempDir.mkdir();
@@ -427,8 +607,7 @@ public class MrpBuilderMain {
 			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
 				buffer_armcc.append(getTempName(tempPath,list_file.get(i))+" ");
 				buffer_armcc.append(""+list_file.get(i)+" ");
-//				System.out.println(buffer_armcc.toString());
-				System.out.println("Compile ... "+list_file.get(i));
+				System.out.println("Compile --> "+list_file.get(i));
 				if(!testCMD(buffer_armcc.toString())){
 					return false;
 				}
@@ -453,7 +632,7 @@ public class MrpBuilderMain {
 	}
 	
 	public static boolean testCompileMRP(ArrayList<String> list_file, ArrayList<String> includeList){
-		SecurityManager m = new SecurityManager();
+		// SecurityManager m = new SecurityManager();
 		String tempPath = System.getProperty("java.io.tmpdir");
 		String dir = "2";
 		tempPath = tempPath + File.separator + dir;
@@ -503,7 +682,7 @@ public class MrpBuilderMain {
 		
 		buffer_link.append(String.format("%s\\mr_helper.lib(mr_helper.o) %s\\mr_helper.lib %s\\mr_helperexb.lib ", MRPBUILDER,MRPBUILDER,MRPBUILDER));
 		System.out.println("--> 调用armcc编译");
-		System.out.println(buffer_armcc.toString());
+//		System.out.println(buffer_armcc.toString());
 		if(!testCMD(buffer_armcc.toString())){
 			return false;
 		}

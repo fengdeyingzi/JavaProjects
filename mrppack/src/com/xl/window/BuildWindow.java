@@ -23,8 +23,6 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import org.json.JSONObject;
@@ -33,12 +31,11 @@ import com.xl.util.FileUtils;
 
 import mrpbuilder_java.MrpBuilder;
 import mrpbuilder_java.MrpBuilder.Config;
-import mrpbuilder_java.MrpBuilder.FileItem;
 import mrpbuilder_java.MrpUnpack;
 
 public class BuildWindow extends JFrame {
 
-	JList list;
+	JList<String> list;
 	JButton btn_add;
 	JButton btn_delete;
 	JButton btn_build;
@@ -233,7 +230,7 @@ public class BuildWindow extends JFrame {
 	}
 
 	public void updateData() {
-		list.setListData(list_file.toArray());
+		list.setListData(list_file.toArray(new String[]{}));
 		for(String item:list_file){
 			if(FileUtils.getName(item).equals("pack.json")){
 				parseJsonFile(item);
@@ -249,8 +246,8 @@ public class BuildWindow extends JFrame {
 
 					if (dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
 						dtde.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
-						List<File> list = (List<File>) (dtde.getTransferable()
-								.getTransferData(DataFlavor.javaFileListFlavor));
+						// TODO: 不知道怎么取消这个异常
+						List<File> list = (List<File>) (dtde.getTransferable().getTransferData(DataFlavor.javaFileListFlavor));
 						if (onDragFile != null) {
 							onDragFile.onDragFile(list);
 						}
@@ -293,6 +290,7 @@ public class BuildWindow extends JFrame {
 
 			byte[] buf = new byte[input.available()];
 			input.read(buf);
+			input.close();
 			content = new String(buf, encoding);
 		}
 		return content;
@@ -317,7 +315,6 @@ public class BuildWindow extends JFrame {
 				try {
 					jsonText = readText(file, "UTF-8");
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				JSONObject jsonObject = new JSONObject(jsonText);

@@ -1,4 +1,4 @@
-import java.io.File;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,10 +20,8 @@ public class Main_mrpbuilder {
 			builder.main(args);
 			System.out.println("打包成功");
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
