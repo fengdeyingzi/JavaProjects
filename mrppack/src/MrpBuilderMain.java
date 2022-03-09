@@ -9,6 +9,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
+import java.net.ContentHandler;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.temporal.TemporalField;
 import java.util.ArrayList;
 import java.util.Base64;
 
@@ -26,6 +31,7 @@ import mrpbuilder_java.MrpUnpack;
  */
 public class MrpBuilderMain {
 	static long startTime = 0;
+	static boolean isFast = false;
 	public static void main(String[] args) {
         
 		boolean useWindow = false;
@@ -97,6 +103,8 @@ public class MrpBuilderMain {
 						useGZIP = true;
 					}else if(item.equals("-bmp565")){
 						useBMP565 = true;
+					}else if(item.equals("-fast")){
+						isFast = true;
 					}else if(item.startsWith("-D")){
 						defineList.add(item);
 					}else if(item.startsWith("-l") || item.startsWith("-L") || item.startsWith("-m") || item.startsWith("-O") || item.startsWith("-Wall")){
@@ -352,6 +360,27 @@ public class MrpBuilderMain {
 		
 	}
 	
+	public static String MD5String(String text) {
+
+		BigInteger bi = null;
+		try {
+			byte[] buffer = text.getBytes("UTF-8");
+			int len = 0;
+			MessageDigest md = MessageDigest.getInstance("MD5");
+
+			md.update(buffer, 0, len);
+
+			byte[] b = md.digest();
+			bi = new BigInteger(1, b);
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return bi.toString(16);
+
+	}
+
 	public static String getTempName(String dir,String name){
 		String endName = FileUtils.getEndName(name);
 		String tempName = dir + File.separator + name.substring(0, name.length()-endName.length())+".o";
@@ -475,24 +504,24 @@ public class MrpBuilderMain {
 		// SecurityManager m = new SecurityManager();
 		String tempPath = System.getProperty("java.io.tmpdir");
 		String dir = "2";
-		tempPath = tempPath + File.separator + dir;
+		tempPath = tempPath + dir;
 		File tempDir = new File(tempPath);
 		if(!tempDir.isDirectory()){
 			tempDir.mkdir();
 		}
-		String MRPBUILDER = "D:\\app\\mingw64\\bin\\";
-		try{
+		// String MRPBUILDER = "D:\\app\\mingw64\\bin\\";
+		// try{
 		
-			String builderc = System.getenv("GCCBUILDER");
-			if(builderc!=null){
-				MRPBUILDER = builderc;
-			}else{
-				System.out.println("未找到 GCCBUILDER 环境变量，请在环境变量中设置");
-			}
-		}catch(Exception e){
+		// 	String builderc = System.getenv("GCCBUILDER");
+		// 	if(builderc!=null){
+		// 		MRPBUILDER = builderc;
+		// 	}else{
+		// 		System.out.println("未找到 GCCBUILDER 环境变量，请在环境变量中设置");
+		// 	}
+		// }catch(Exception e){
 			
-		}
-		System.out.println("mrpbuilder路径："+MRPBUILDER);
+		// }
+		// System.out.println("mrpbuilder路径："+MRPBUILDER);
 		
 		
 		
@@ -502,10 +531,8 @@ public class MrpBuilderMain {
 		buffer_link.append(		"gcc -o "+ouputString+" ");
 		for(int i=0;i<list_file.size();i++){
 			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
-			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
+			if(endname.equals(".s") || endname.equals(".c") || endname.equals(".cpp")){
 			buffer_link.append(getTempName(tempPath,list_file.get(i))+" ");
-			}else{
-				buffer_link.append(list_file.get(i)+" ");
 			}
 			
 		}
@@ -530,7 +557,12 @@ public class MrpBuilderMain {
 			}
 			buffer_armcc.append("-o ");
 			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
-			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
+			if(endname.equals(".s") || endname.equals(".c") || endname.equals(".cpp")){
+				File tempFile = new File(getTempName(tempPath,list_file.get(i)));
+				File cfile = new File(list_file.get(i));
+				if(isFast && (cfile.lastModified()<tempFile.lastModified())){
+					continue;
+				}
 				buffer_armcc.append(getTempName(tempPath,list_file.get(i))+" ");
 				buffer_armcc.append(""+list_file.get(i)+" ");
 //				System.out.println(buffer_armcc.toString());
@@ -584,7 +616,7 @@ public class MrpBuilderMain {
 		buffer_link.append(		"armlink -ropi -rwpi -ro-base 0x80000 -remove -first mr_c_function_load -entry mr_c_function_load -o "+tempPath+File.separator+"mr_cfunction.fmt ");
 		for(int i=0;i<list_file.size();i++){
 			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
-			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
+			if(endname.equals(".s") || endname.equals(".c") || endname.equals(".cpp")){
 			buffer_link.append(getTempName(tempPath,list_file.get(i))+" ");
 			}
 			
@@ -604,7 +636,12 @@ public class MrpBuilderMain {
 			}
 			buffer_armcc.append("-o ");
 			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
-			if(endname.equals(".s") || endname.equals(".h") || endname.equals(".c") || endname.equals(".cpp") || endname.equals(".hpp")){
+			if(endname.equals(".s") || endname.equals(".c") || endname.equals(".cpp")){
+				File tempFile = new File(getTempName(tempPath,list_file.get(i)));
+				File itemFile = new File(list_file.get(i));
+				if(isFast && (tempFile.lastModified() > itemFile.lastModified())){
+					continue;
+				}
 				buffer_armcc.append(getTempName(tempPath,list_file.get(i))+" ");
 				buffer_armcc.append(""+list_file.get(i)+" ");
 				System.out.println("Compile --> "+list_file.get(i));
