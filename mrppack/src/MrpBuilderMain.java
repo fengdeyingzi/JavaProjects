@@ -32,9 +32,12 @@ import mrpbuilder_java.MrpUnpack;
 public class MrpBuilderMain {
 	static long startTime = 0;
 	static boolean isFast = false;
+	static String tempDirName = "2";
 	public static void main(String[] args) {
         
 		boolean useWindow = false;
+		String userDir = System.getProperty("user.dir");
+		tempDirName = MD5String(userDir);
 		String helpText = "​    -h 帮助\r\n"
 				+"\n"
 				+"​    -filename 文件名\r\n"
@@ -45,7 +48,7 @@ public class MrpBuilderMain {
 				+"\n"
 				+"​    -desc 详情\r\n"
 				+"\n"
-				+"​    -t 类型 unpack 解包;pack 打包;info 获取mrp信息;setinfo 设置mrp信息;build mrp编译;gcc 使用gcc编译本机程序\r\n"
+				+"​    -t 类型 unpack 解包;pack 打包;info 获取mrp信息;setinfo 设置mrp信息;build mrp编译;gcc 使用gcc编译本机程序;runjava  运行java;buildjar  打包jar;clear  清除缓存\r\n"
 				+"\n"
 				+"​    -i 输入文件（可指定文件夹）\r\n"
 				+"\n"
@@ -279,7 +282,6 @@ public class MrpBuilderMain {
 				if(!testCompileMRP2(inputList,includeList,defineList)){
 					return;
 				}
-				
 				if(!inputList.contains("cfunction.ext")){
 					inputList.add(getTempPath()+File.separator+"cfunction.ext");
 				}
@@ -355,6 +357,8 @@ public class MrpBuilderMain {
 				
 				System.out.println("耗时："+(((float)(System.currentTimeMillis()-startTime))/1000)+" s");
 
+			}else if(t.equals("clear")){
+				FileUtils.delAllFile(getTempPath());
 			}
 		}
 		
@@ -460,7 +464,7 @@ public class MrpBuilderMain {
 	
 	public static String getTempPath(){
 		String tempPath = System.getProperty("java.io.tmpdir");
-		String dir = "2";
+		String dir = tempDirName;
 		tempPath = tempPath + File.separator + dir;
 		return tempPath;
 	}
@@ -503,7 +507,7 @@ public class MrpBuilderMain {
 	public static boolean testCompile2(ArrayList<String> list_file, ArrayList<String> includeList, ArrayList<String> defineList,String ouputString){
 		// SecurityManager m = new SecurityManager();
 		String tempPath = System.getProperty("java.io.tmpdir");
-		String dir = "2";
+		String dir = tempDirName;
 		tempPath = tempPath + dir;
 		File tempDir = new File(tempPath);
 		if(!tempDir.isDirectory()){
@@ -588,7 +592,7 @@ public class MrpBuilderMain {
 	public static boolean testCompileMRP2(ArrayList<String> list_file, ArrayList<String> includeList, ArrayList<String> defineList){
 		// SecurityManager m = new SecurityManager();
 		String tempPath = System.getProperty("java.io.tmpdir");
-		String dir = "2";
+		String dir = tempDirName;
 		tempPath = new File(tempPath, dir).getAbsolutePath();
 		File tempDir = new File(tempPath);
 		if(!tempDir.isDirectory()){
@@ -671,7 +675,7 @@ public class MrpBuilderMain {
 	public static boolean testCompileMRP(ArrayList<String> list_file, ArrayList<String> includeList){
 		// SecurityManager m = new SecurityManager();
 		String tempPath = System.getProperty("java.io.tmpdir");
-		String dir = "2";
+		String dir = tempDirName;
 		tempPath = tempPath + File.separator + dir;
 		File tempDir = new File(tempPath);
 		if(!tempDir.isDirectory()){
