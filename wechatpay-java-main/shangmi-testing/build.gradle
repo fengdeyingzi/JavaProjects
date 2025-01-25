@@ -1,0 +1,25 @@
+plugins{
+    id "common"
+}
+
+dependencies {
+    api project(":core")
+
+    implementation platform("org.junit:junit-bom:${junit5Version}")
+    implementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+
+    jacoco {
+        enabled = false
+    }
+}
+
+jar {
+    manifest {
+        attributes("Automatic-Module-Name": "com.wechat.pay.java.shangmi.testing")
+        attributes("Implementation-Version": project.version)
+    }
+}

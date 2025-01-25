@@ -1,0 +1,45 @@
+plugins {
+    id "java-library"
+    id "maven-publish"
+    id "signing"
+    id "com.diffplug.spotless"
+    id "com.github.johnrengelman.shadow"
+    id "jacoco"
+}
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+version projectPropVersion
+group projectPropGroup
+compileJava.options.encoding = "UTF-8"
+compileTestJava.options.encoding = "UTF-8"
+
+repositories {
+    mavenCentral()
+}
+
+spotless {
+    java {
+        removeUnusedImports()
+        googleJavaFormat('1.22.0')
+    }
+}
+
+javadoc {
+    source = sourceSets.main.allJava
+    classpath = configurations.runtimeClasspath
+    options {
+        encoding "UTF-8"
+    }
+}
+
+test {
+    useJUnit()
+}
+
+jacocoTestReport {
+    reports {
+        xml.required = true
+    }
+}
