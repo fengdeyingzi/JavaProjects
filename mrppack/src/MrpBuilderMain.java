@@ -33,37 +33,36 @@ public class MrpBuilderMain {
 	static long startTime = 0;
 	static boolean isFast = false;
 	static String tempDirName = "2";
+	static String mapFile = null; //生成调试map文件
+	static String options = "";
+	static String debugTempPath = "obj"; // 编译缓存文件夹
 	public static void main(String[] args) {
-        
+
 		boolean useWindow = false;
 		String userDir = System.getProperty("user.dir");
 		tempDirName = MD5String(userDir);
+		debugTempPath = getTempPath();
 		String helpText = "     -h 帮助\r\n"
-				+"\n"
 				+"     -filename 文件名\r\n"
-				+"\n"
 				+"     -displayname 显示名\r\n"
-				+"\n"
 				+"     -vendor 作者\r\n"
-				+"\n"
 				+"     -desc 详情\r\n"
-				+"\n"
 				+"     -t 类型 unpack 解包;pack 打包;info 获取mrp信息;setinfo 设置mrp信息;build mrp编译;gcc 使用gcc编译本机程序;runjava  运行java;buildjar  打包jar;clear  清除缓存\r\n"
-				+"\n"
 				+"     -i 输入文件（可指定文件夹）\r\n"
-				+"\n"
 				+"     -o 输出文件\r\n"
-				+"\n"
 				+"     -auth 编译器授权字符串 2f7cc7cde\r\n"
-				+"\n"
 				+"     -appid 应用id\r\n"
-				+"\n"
 				+"     -version 版本号\r\n"
-				+"\n"
 				+"     -scrw 屏幕宽度\r\n"
-				+"\n"
-				+"     -scrh 屏幕高度\r\n\r\n";
-		String builderVersion = "20240925";
+				+"     -scrh 屏幕高度\r\n"
+				+"     -gzip 开启gzip压缩\r\n"
+				+"     -gcc 使用arm-none-eabi-gcc编译\r\n"
+				+"     -bmp565 开始bmp565格式转换（兼容撕凯编译器）\r\n"
+				+"     -bma 开启bma格式转换\r\n"
+				+"     -cache 指定编译缓存路径\r\n"
+				+"     -L{name}.lib 链接lib库\r\n"
+				+"     -map 指定符号表文件输出名\r\n";
+		String builderVersion = "20251221";
 		String type = "";
 		String t = "";
 		String displayname = "我的mrp";
@@ -82,7 +81,10 @@ public class MrpBuilderMain {
 		String scrh = "320";
 		String mainClass = "Main";
 		boolean useGZIP = false;
+		boolean useBma = false;
+		boolean useGCC = false;
 		boolean useBMP565 = false;
+		int flag = 3;
 		startTime = System.currentTimeMillis();
 		MrpBuilder.Config config = new MrpBuilder().new Config();
 		if(args.length == 0){
@@ -104,6 +106,13 @@ public class MrpBuilderMain {
 						includeList.add(item);
 					}else if(item.equals("-gzip")){
 						useGZIP = true;
+						System.out.println("开启gzip压缩");
+					}else if(item.equals("-bma")){
+						useBma = true;
+						System.out.println("开启bma图片转换");
+					}else if(item.equals("-gcc")){
+						useGCC = true;
+						System.out.println("使用arm-none-eabi-gcc编译");
 					}else if(item.equals("-bmp565")){
 						useBMP565 = true;
 					}else if(item.equals("-fast")){
@@ -112,6 +121,8 @@ public class MrpBuilderMain {
 						defineList.add(item);
 					}else if(item.startsWith("-l") || item.startsWith("-L") || item.startsWith("-m") || item.startsWith("-O") || item.startsWith("-Wall")){
 						linkList.add(item);
+					}else if(item.equals("-lm") || item.equals("-lc") || item.equals("-O2") || item.equals("-Otime")){
+						options = options + " " + item;
 					}
 				}else{
 					if(type.equals("t") || type.equals("type")){
@@ -130,6 +141,8 @@ public class MrpBuilderMain {
 					}else if(type.equals("desc")){
 						desc = item;
 						config.Desc = item;
+					}else if(type.equals("flag")){
+						flag = Integer.parseInt(item);
 					}else if(type.equals("input") || type.equals("i")){
 //						inputList.add(item);
 						File file = new File(item);
@@ -157,6 +170,11 @@ public class MrpBuilderMain {
 						scrw = item;
 					}else if(type.equals("scrh")){
 						scrh = item;
+					}else if(type.equals("map")){
+						mapFile = item;
+						options += " -O0";
+					}else if(type.equals("cache")){
+						debugTempPath = item;
 					}
 				}
 				
@@ -180,7 +198,7 @@ public class MrpBuilderMain {
 				if(inputList.size()==0){
 					System.out.println("请输入文件");
 				}
-				
+
 				ArrayList<String> list_file = new ArrayList<String>();
 				config = new MrpBuilder().new Config();
 				config.FileName = filename;
@@ -189,6 +207,7 @@ public class MrpBuilderMain {
 				config.Desc = desc;
 				config.path = output;
 				config.AuthStr = auth;
+				config.Flag = flag;
 				config.Appid = Integer.valueOf(appid);
 				config.Version = Integer.valueOf(version);
 				config.ScreenWidth = Integer.valueOf(scrw);
@@ -275,11 +294,35 @@ public class MrpBuilderMain {
 					System.out.println("请添加输入文件");
 					return;
 				}
-				if(!testCompileMRP2(inputList,includeList,defineList,linkList, output)){
-					return;
+				if(useGCC){
+					if(!testCompileMRP2FromGCC(inputList,includeList,defineList,linkList, output)){
+						return;
+					}
+				}else{
+					if(options.length() == 0){
+						options = "-O2 -Otime";
+					}
+					if(!testCompileMRP2(inputList,includeList,defineList,linkList, output)){
+						return;
+					}
 				}
-				if(!inputList.contains("cfunction.ext")){
+
+				// 检查是否为库文件，如果是则跳过 MrpBuilder 打包
+				String outputExt = FileUtils.getEndName(output);
+				if(outputExt != null){
+					outputExt = outputExt.toLowerCase();
+					if(outputExt.equals(".lib") || outputExt.equals(".a")){
+						System.out.println("库文件编译完成，跳过MrpBuilder打包");
+						System.out.println("耗时："+(((float)(System.currentTimeMillis()-startTime))/1000)+" s");
+						return;
+					}
+				}
+
+				if(!useGCC && !inputList.contains("cfunction.ext")){
 					inputList.add(getTempPath()+File.separator+"cfunction.ext");
+				}
+				if(useGCC && !inputList.contains("bin.elf")){
+					inputList.add(getTempPath()+File.separator+"bin.elf");
 				}
 				if(!inputList.contains("start.mr")){
 					//判断start.mr是否存在
@@ -307,6 +350,7 @@ public class MrpBuilderMain {
 				config.Desc = desc;
 				config.path = output;
 				config.AuthStr = auth;
+				config.Flag = flag;
 				config.Appid = Integer.valueOf(appid);
 				config.Version = Integer.valueOf(version);
 				config.ScreenWidth = Integer.valueOf(scrw);
@@ -338,6 +382,7 @@ public class MrpBuilderMain {
 					}
 				}
 				builder.setGZIP(useGZIP);
+				builder.useBma = useBma;
 				builder.setBMP565(useBMP565);
 				builder.pack(config, list_file);
 				System.out.println("耗时："+(((float)(System.currentTimeMillis()-startTime))/1000)+" s");
@@ -395,43 +440,69 @@ public class MrpBuilderMain {
 	
 	public static boolean testCMD(String cmd){
 		boolean isTRUE = true;
-		
+		BufferedReader br = null;
+		BufferedReader input_err = null;
+
 		try {
-			
+
 			Process p = Runtime.getRuntime().exec(cmd);
-			p.getErrorStream();
-			final BufferedReader input_err = new BufferedReader(new InputStreamReader(p.getErrorStream()));
-			BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
-			String line = null;
-			new Thread(new Runnable() {
-				
+			input_err = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+			br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+
+			// 使用 StringBuilder 收集错误输出
+			final StringBuilder errorOutput = new StringBuilder();
+			final BufferedReader finalInputErr = input_err;
+			Thread errorThread = new Thread(new Runnable() {
+
 				@Override
 				public void run() {
 					String line = null;
 					try {
-						while ((line = input_err.readLine()) != null) {
-							System.out.println("ERR:"+line);
+						while ((line = finalInputErr.readLine()) != null) {
+							errorOutput.append("ERR:").append(line).append("\n");
 						}
 					} catch (IOException e) {
-						e.printStackTrace();
+						// 忽略流关闭异常
 					}
 				}
-			}).start();
+			});
+			errorThread.start();
+
+			// 读取标准输出
+			String line = null;
 			while ((line = br.readLine()) != null) {
 				System.out.println(line);
 			}
-			
-			br.close();
-			input_err.close();
+
+			// 等待进程结束
+			p.waitFor();
+
+			// 等待错误输出线程结束
+			errorThread.join(1000);
+
+			// 输出错误信息
+			if(errorOutput.length() > 0){
+				System.out.print(errorOutput.toString());
+			}
+
 			if(p.exitValue() != 0){
 				isTRUE = false;
 			}
-		    
+
 		} catch (Exception e) {
 			e.printStackTrace();
+			isTRUE = false;
 		} finally {
-
-			
+			try {
+				if(br != null) br.close();
+			} catch (IOException e) {
+				// 忽略
+			}
+			try {
+				if(input_err != null) input_err.close();
+			} catch (IOException e) {
+				// 忽略
+			}
 		}
 		return isTRUE;
 	}
@@ -601,9 +672,7 @@ public class MrpBuilderMain {
 	
 	public static boolean testCompileMRP2(ArrayList<String> list_file, ArrayList<String> includeList, ArrayList<String> defineList, ArrayList<String> linkList, String output){
 		// SecurityManager m = new SecurityManager();
-		String tempPath = System.getProperty("java.io.tmpdir");
-		String dir = tempDirName;
-		tempPath = new File(tempPath, dir).getAbsolutePath();
+		String tempPath = debugTempPath;
 		File tempDir = new File(tempPath);
 		if(!tempDir.isDirectory()){
 			tempDir.mkdir();
@@ -641,8 +710,11 @@ public class MrpBuilderMain {
 				buffer_link.append(linkList.get(i).substring(2)+" ");
 			}
 		}
-		
+
 		buffer_link.append(String.format("%s\\mr_helper.lib(mr_helper.o) %s\\mr_helper.lib %s\\mr_helperexb.lib ", MRPBUILDER,MRPBUILDER,MRPBUILDER));
+		if(mapFile != null){
+			buffer_link.append("-map -list \""+mapFile+"\" ");
+		}
 		System.out.println("--> 调用armcc编译");
 		File fileOut = new File(output);
 		if (!fileOut.exists() && isFast) {
@@ -661,7 +733,7 @@ public class MrpBuilderMain {
 		}
 		for(int i=0;i<list_file.size();i++){
 			StringBuffer buffer_armcc = new StringBuffer();
-			buffer_armcc.append(String.format("armcc -c -I. -c -O2 -Otime -DGET_C_FUNCTION_P()=(*(((mr_c_function_st**)mr_c_function_load)-1)) -DGET_HELPER()=(*(((mr_table**)mr_c_function_load)-2)) -I%s\\..\\include -I%s\\..\\include\\plugins -cpu ARM7EJ-S -littleend -apcs /ropi/rwpi/interwork -fa -zo ", MRPBUILDER,MRPBUILDER));
+			buffer_armcc.append(String.format("armcc -c -I. -c -fpu softvfp %s -DGET_C_FUNCTION_P()=(*(((mr_c_function_st**)mr_c_function_load)-1)) -DGET_HELPER()=(*(((mr_table**)mr_c_function_load)-2)) -I%s\\..\\include -I%s\\..\\include\\plugins -cpu ARM7EJ-S -littleend -apcs /ropi/rwpi/interwork -fa -zo ", options, MRPBUILDER,MRPBUILDER));
 			for(int j=0;j<includeList.size();j++){
 				buffer_armcc.append(includeList.get(j)+" ");
 			}
@@ -685,9 +757,34 @@ public class MrpBuilderMain {
 				}
 			}
 		}
-		
-		
-		
+
+
+		// 如果是库文件，使用 armar 创建库文件并返回
+		String outputExt = FileUtils.getEndName(output);
+		boolean isLibrary = false;
+		if(outputExt != null){
+			outputExt = outputExt.toLowerCase();
+			isLibrary = (outputExt.equals(".lib") || outputExt.equals(".a"));
+		}
+
+		if(isLibrary){
+			System.out.println("--> 调用armar创建库文件");
+			StringBuffer bufferArmar = new StringBuffer();
+			bufferArmar.append("armar -r "+output+" ");
+			for(int i=0;i<list_file.size();i++){
+				String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
+				if(endname.equals(".s") || endname.equals(".c") || endname.equals(".cpp")){
+					bufferArmar.append(getTempName(tempPath,list_file.get(i))+" ");
+				}
+			}
+			System.out.println(bufferArmar.toString());
+			if(!testCMD(bufferArmar.toString())){
+				return false;
+			}
+			System.out.println("--> 库文件创建完成");
+			return true;
+		}
+
 		System.out.println("--> 调用armlink");
 		System.out.println(buffer_link.toString());
 		if(!testCMD(buffer_link.toString())){
@@ -771,5 +868,129 @@ public class MrpBuilderMain {
 		mrpeg(tempPath+File.separator+"mr_cfunction.ext",tempPath+File.separator+"cfunction.ext");
 		return true;
 
+	}
+
+	public static boolean testCompileMRP2FromGCC(ArrayList<String> list_file, ArrayList<String> includeList, ArrayList<String> defineList, ArrayList<String> linkList, String output){
+		String tempPath = debugTempPath;
+		File tempDir = new File(tempPath);
+		if(!tempDir.isDirectory()){
+			tempDir.mkdir();
+		}
+
+		// 检查是否为库文件
+		String outputExt = FileUtils.getEndName(output);
+		boolean isLibrary = false;
+		if(outputExt != null){
+			outputExt = outputExt.toLowerCase();
+			isLibrary = (outputExt.equals(".lib") || outputExt.equals(".a"));
+		}
+
+		StringBuffer buffer_link = new StringBuffer();
+		buffer_link.append("arm-none-eabi-gcc -o "+tempPath+File.separator+"bin.elf ");
+
+		for(int i=0;i<list_file.size();i++){
+			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
+			if(endname.equals(".s") || endname.equals(".c") || endname.equals(".cpp")){
+				buffer_link.append(getTempName(tempPath,list_file.get(i))+" ");
+			}
+		}
+
+		// 添加链接库
+		for(int i=0;i<linkList.size();i++){
+			buffer_link.append(linkList.get(i)+" ");
+		}
+
+		// 添加GCC链接选项
+		buffer_link.append("-nostdlib -nostartfiles -pie -fPIC -marm -march=armv5te --entry=_start ");
+		buffer_link.append("-Wl,--gc-sections -Wl,--strip-all -lgcc -ffixed-r9 -ffixed-r10 -lm "+options);
+
+		System.out.println("--> 调用arm-none-eabi-gcc编译");
+		File fileOut = new File(output);
+		if(!fileOut.exists() && isFast){
+			isFast = false;
+			System.out.println("快速编译启用失败：未找到编译后文件");
+		}else{
+			for(int k=0;k<list_file.size();k++){
+				String itemFileName = list_file.get(k);
+				String endname = FileUtils.getEndName(itemFileName).toLowerCase();
+				File itemFile = new File(itemFileName.substring(0, itemFileName.length()-endname.length())+".h");
+				if(isFast && itemFile.exists() && fileOut.exists() &&
+					itemFile.lastModified() > fileOut.lastModified()){
+					isFast = false;
+					System.out.println("快速编译启用失败：头文件已更新");
+				}
+			}
+		}
+
+		// 是否存在cpp文件
+		boolean hasCpp = false;
+		for(int i=0;i<list_file.size();i++){
+			StringBuffer bufferGCC = new StringBuffer();
+			bufferGCC.append("arm-none-eabi-gcc -c ");
+
+			// 添加包含路径
+			for(int j=0;j<includeList.size();j++){
+				bufferGCC.append(includeList.get(j)+" ");
+			}
+
+			// 添加定义
+			for(int j=0;j<defineList.size();j++){
+				bufferGCC.append(defineList.get(j)+" ");
+			}
+
+			// 添加GCC编译选项
+			bufferGCC.append("-nostdlib -nostartfiles -pie -fPIC -marm -march=armv5te -Isrc -I. -ffixed-r9 -ffixed-r10 ");
+
+			String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
+			if(endname.equals(".cpp")){
+				bufferGCC.append("-fno-exceptions -fno-rtti -fno-threadsafe-statics -nostdlib -nodefaultlibs -fno-use-cxa-atexit ");
+				hasCpp = true;
+			}
+			bufferGCC.append("-o ");
+			if(endname.equals(".s") || endname.equals(".c") || endname.equals(".cpp")){
+				File tempFile = new File(getTempName(tempPath,list_file.get(i)));
+				File itemFile = new File(list_file.get(i));
+				if(isFast && (tempFile.lastModified() > itemFile.lastModified())){
+					continue;
+				}
+				bufferGCC.append(getTempName(tempPath,list_file.get(i))+" ");
+				bufferGCC.append(list_file.get(i)+" ");
+				System.out.println("Compile --> "+list_file.get(i));
+				if(!testCMD(bufferGCC.toString())){
+					return false;
+				}
+			}
+		}
+
+		if(hasCpp){
+			buffer_link.append(" -fno-exceptions -fno-rtti -fno-threadsafe-statics -nostdlib -nodefaultlibs -fno-use-cxa-atexit ");
+		}
+
+		// 如果是库文件，使用ar创建库文件并返回
+		if(isLibrary){
+			System.out.println("--> 调用ar创建库文件");
+			StringBuffer bufferAr = new StringBuffer();
+			bufferAr.append("arm-none-eabi-ar -r "+output+" ");
+			for(int i=0;i<list_file.size();i++){
+				String endname = FileUtils.getEndName(list_file.get(i)).toLowerCase();
+				if(endname.equals(".s") || endname.equals(".c") || endname.equals(".cpp")){
+					bufferAr.append(getTempName(tempPath,list_file.get(i))+" ");
+				}
+			}
+			System.out.println(bufferAr.toString());
+			if(!testCMD(bufferAr.toString())){
+				return false;
+			}
+			System.out.println("--> 库文件创建完成");
+			return true;
+		}
+
+		System.out.println("--> 调用arm-none-eabi-gcc链接");
+		System.out.println(buffer_link.toString());
+		if(!testCMD(buffer_link.toString())){
+			return false;
+		}
+
+		return true;
 	}
 }

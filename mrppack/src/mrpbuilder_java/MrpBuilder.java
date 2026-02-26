@@ -43,6 +43,7 @@ public class MrpBuilder {
 	byte[] Reserve3 = new byte[31]; // [209:240]
 	boolean useGZIP = false;// 是否gz压缩
 	boolean useBMP565 = false; //压缩图片为bmp565
+	public boolean useBma = false; //开启bma图片转换
 
 	ArrayList<FileItem> list_file;
 	/*
@@ -94,9 +95,8 @@ public class MrpBuilder {
 				if (!new File(item.path).exists()) {
 					System.out.println("文件未找到：" + item.path);
 				} else {
-					
+					if(useBMP565 && item.path.toLowerCase().endsWith(".bmp")){
 						item.len = (int) new File(item.path).length();
-						
 						byte[] temp_buf = new byte[item.len];
 						try {
 							FileInputStream input = new FileInputStream(new File(item.path));
@@ -105,9 +105,7 @@ public class MrpBuilder {
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
-						
-					    item.buf = temp_buf;
-					if(useBMP565 && item.path.toLowerCase().endsWith(".bmp")){
+						item.buf = temp_buf;
 						byte[] bmp565buf = getBmp565(item.buf);
 						if(bmp565buf!=null){
 							item.buf = bmp565buf;
@@ -115,8 +113,30 @@ public class MrpBuilder {
 						}else{
 							System.out.println("bmp565 error: "+item.path);
 						}
-						
 					}
+					else if(useBma && (item.path.toLowerCase().endsWith(".bmp") ||
+						item.path.toLowerCase().endsWith(".gif") ||
+						item.path.toLowerCase().endsWith(".png") ||
+						item.path.toLowerCase().endsWith(".jpg") ||
+						item.path.toLowerCase().endsWith(".webp"))){
+						byte[] mapData = get_bmap565(item.path);
+						item.buf = mapData;
+						item.len = item.buf.length;
+						System.out.println(item.path+" 转换为bma格式");
+					}
+					else{
+						item.len = (int) new File(item.path).length();
+						byte[] temp_buf = new byte[item.len];
+						try {
+							FileInputStream input = new FileInputStream(new File(item.path));
+							input.read(temp_buf);
+							input.close();
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+						item.buf = temp_buf;
+					}
+
 					if(useGZIP){
 						item.buf = gzipBytes(item.buf);
 						item.len = item.buf.length;
@@ -354,7 +374,123 @@ public class MrpBuilder {
 		 }
 //		 debug_printf("返回bmp\n");
 		 return bitmap;
-		
+
+	}
+
+	// 将图片转换为bma格式（MAP5格式）
+	public byte[] get_bmap565(String inputPath){
+		try {
+			int transparentColor = 0x00ffff;
+			int tr = (transparentColor >> 16) & 0xff;
+			int tg = (transparentColor >> 8) & 0xff;
+			int tb = transparentColor & 0xff;
+			int tran565 = (tr >> 3 << 11) | (tg >> 2 << 5) | (tb >> 3);
+
+			// 读取图像文件
+			File imageFile = new File(inputPath);
+			if(!imageFile.exists()){
+				System.out.println("图片文件不存在: " + inputPath);
+				return new byte[0];
+			}
+
+			// 使用 Java 的 ImageIO 读取图片
+			java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(imageFile);
+			if(image == null){
+				System.out.println("无法解码图片: " + inputPath);
+				return new byte[0];
+			}
+
+			int width = image.getWidth();
+			int height = image.getHeight();
+
+			// 检查是否有透明度
+			boolean hasAlpha = hasTransparency(image);
+			if(!hasAlpha){
+				transparentColor = 0;
+				tr = 0;
+				tg = 0;
+				tb = 0;
+				tran565 = 0;
+			}
+
+			// 转换为 RGB565
+			short[] rgb565Data = new short[width * height];
+
+			for(int y = 0; y < height; y++){
+				for(int x = 0; x < width; x++){
+					int argb = image.getRGB(x, y);
+					int alpha = (argb >> 24) & 0xff;
+					int r = (argb >> 16) & 0xff;
+					int g = (argb >> 8) & 0xff;
+					int b = argb & 0xff;
+
+					// 转换为 RGB565
+					int r5 = r >> 3;
+					int g6 = g >> 2;
+					int b5 = b >> 3;
+					int rgb565 = (r5 << 11) | (g6 << 5) | b5;
+
+					rgb565Data[y * width + x] = (short)(alpha < 100 ? tran565 : rgb565);
+				}
+			}
+
+			// 创建 .bma 文件格式
+			ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+
+			// 写入头信息 "MAP5"
+			byteStream.write("MAP5".getBytes());
+
+			// 写入宽度 (小端)
+			byteStream.write(getIntByte(width));
+
+			// 写入高度 (小端)
+			byteStream.write(getIntByte(height));
+
+			// 写入透明色 (RGB565格式, 小端)
+			byteStream.write(getShortByte(tran565));
+
+			// 写入图像数据
+			for(int i = 0; i < rgb565Data.length; i++){
+				byteStream.write(getShortByte(rgb565Data[i] & 0xffff));
+			}
+
+			return byteStream.toByteArray();
+
+		} catch(Exception e){
+			e.printStackTrace();
+			return new byte[0];
+		}
+	}
+
+	// 检测图片是否包含透明度
+	private boolean hasTransparency(java.awt.image.BufferedImage image){
+		try {
+			// 检查图片是否有 alpha 通道
+			if(!image.getColorModel().hasAlpha()){
+				return false;
+			}
+
+			int width = image.getWidth();
+			int height = image.getHeight();
+
+			// 遍历所有像素检查是否有透明像素
+			for(int y = 0; y < height; y++){
+				for(int x = 0; x < width; x++){
+					int argb = image.getRGB(x, y);
+					int alpha = (argb >> 24) & 0xff;
+
+					// 如果发现任何非完全不透明的像素，则包含透明度
+					if(alpha < 255){
+						return true;
+					}
+				}
+			}
+
+			return false;
+		} catch(Exception e){
+			e.printStackTrace();
+			return false;
+		}
 	}
 
 	public void main(String[] args) throws IOException {
